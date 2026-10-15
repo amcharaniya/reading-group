@@ -6,11 +6,20 @@ RG.ready.then(async ({ store, members }) => {
   $("#selector").insertAdjacentHTML("beforeend",
     members.map((m) => `<option value="${esc(m)}">Selected by ${esc(m)}</option>`).join(""));
 
+  // Publisher filter: every publisher we've read, A–Z, with how many articles each.
+  const pubCounts = {};
+  for (const r of all) if (r.publisher) pubCounts[r.publisher] = (pubCounts[r.publisher] || 0) + 1;
+  $("#publisher").insertAdjacentHTML("beforeend", Object.keys(pubCounts)
+    .sort((a, b) => a.replace(/^The /, "").localeCompare(b.replace(/^The /, "")))
+    .map((p) => `<option value="${esc(p)}">${esc(p)} (${pubCounts[p]})</option>`).join(""));
+
   function render() {
     const q = $("#q").value.trim().toLowerCase();
     const who = $("#selector").value;
+    const pub = $("#publisher").value;
     const rows = all
       .filter((r) => !who || r.selected_by === who)
+      .filter((r) => !pub || r.publisher === pub)
       .filter((r) => !q || [r.title, r.authors, r.publisher].some((v) => (v || "").toLowerCase().includes(q)))
       .sort((a, b) => {
         const x = a[sortKey] ?? "", y = b[sortKey] ?? "";
@@ -30,7 +39,7 @@ RG.ready.then(async ({ store, members }) => {
         <td>${pill(r.selected_by)}</td>
         <td class="nowrap"><a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(hostOf(r.url))}</a></td>
       </tr>`).join("")
-      : `<tr><td colspan="7" class="muted">No articles${q || who ? " match" : " yet"}.</td></tr>`;
+      : `<tr><td colspan="7" class="muted">No articles${q || who || pub ? " match" : " yet"}.</td></tr>`;
 
     document.querySelectorAll("th").forEach((th) => {
       th.classList.toggle("sorted", th.dataset.key === sortKey);
@@ -45,5 +54,6 @@ RG.ready.then(async ({ store, members }) => {
   }));
   $("#q").addEventListener("input", render);
   $("#selector").addEventListener("change", render);
+  $("#publisher").addEventListener("change", render);
   render();
 });

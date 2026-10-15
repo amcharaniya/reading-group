@@ -198,3 +198,4 @@ td .edit:hover { color: var(--accent); }
   .nav { gap: 4px 18px; }
   .utility .date { display: none; }
 }
+.bio { font: italic 400 19px/1.55 var(--serif); color: var(--ink-2); margin: 0; }
