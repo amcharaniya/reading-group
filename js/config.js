@@ -3,7 +3,7 @@
 // supabase/schema.sql are what keep the articles visible to only the two of you.
 // While these still say YOUR_..., the site runs in demo mode with sample data saved in your browser.
 window.RG_CONFIG = {
-  supabaseUrl: "YOUR_SUPABASE_URL",
-  supabaseAnonKey: "YOUR_SUPABASE_ANON_KEY",
+  supabaseUrl: "https://qntpbraaxwexfqddblbx.supabase.co",
+  supabaseAnonKey: "sb_publishable_DDWlrT6eg9tYDzsFBtujtw_mdX0WXb_",
   meetingEveryDays: 14,
 };
