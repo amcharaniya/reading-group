@@ -1,4 +1,4 @@
-# 🤭 Reading Group
+# Pursuit of Ilm
 
 Amaan and Mae's reading group: two articles every two weeks. Static site on GitHub Pages; articles stored in Supabase.
 
@@ -28,7 +28,7 @@ row-level security: only emails in the `members` table can read or write them, a
 
 ## Customizing
 
-- **Header photo**: save it as `assets/header.jpg`. Until then, a soft gradient shows.
+- **Header photo**: `assets/header.webp` (Monsiau, *Socrates and Aspasia*). Caption lives in `js/app.js`.
 - **About us**: edit `about.html`. Photos go in `assets/`.
 - **Meeting cadence**: `meetingEveryDays` in `js/config.js` sets the suggested next date.
 

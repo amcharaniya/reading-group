@@ -4,7 +4,7 @@ RG.ready.then(async ({ store, members }) => {
   let sortKey = "meeting_date", asc = false;
 
   $("#selector").insertAdjacentHTML("beforeend",
-    members.map((m) => `<option value="${esc(m)}">Selected by: ${esc(m)}</option>`).join(""));
+    members.map((m) => `<option value="${esc(m)}">Selected by ${esc(m)}</option>`).join(""));
 
   function render() {
     const q = $("#q").value.trim().toLowerCase();
@@ -22,7 +22,7 @@ RG.ready.then(async ({ store, members }) => {
     $("#rows").innerHTML = rows.length ? rows.map((r) => `
       <tr>
         <td class="title"><a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a><a
-          class="edit" href="add.html?id=${r.id}" title="Edit">✎</a></td>
+          class="edit" href="add.html?id=${r.id}" >Edit</a></td>
         <td>${esc(r.authors || "")}</td>
         <td class="nowrap">${fmtDay(r.published_on)}</td>
         <td>${esc(r.publisher || "")}</td>

@@ -4,14 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>Add articles · Reading Group</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤭</text></svg>">
+  <title>Submit · Pursuit of Ilm</title>
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body data-page="add" data-title="Add articles">
-  <main class="page">
+<body data-page="add" data-kicker="Submit" data-title="Add the next articles">
+  <main class="page wrap">
     <div id="content" hidden>
-      <p class="muted" id="intro">Paste a link and pick the meeting date — the title, author, publisher and image are filled in for you. Check them before saving.</p>
+      <p class="dek" id="intro">Paste a link and pick the meeting date — the title, author, publisher and image are filled in for you. Check them before saving.</p>
       <form class="form" id="form" autocomplete="off">
         <div class="field">
           <label for="url">Link to the article</label>
@@ -43,7 +46,7 @@
               <div class="field"><label for="image_url">Image URL</label><input type="url" id="image_url"></div>
             </div>
             <div class="field"><label for="description">Summary</label><textarea id="description" rows="3"></textarea></div>
-            <div class="field"><label>Tile preview</label><div class="preview" id="preview"></div></div>
+            <div class="field"><label>Preview</label><div class="preview" id="preview"></div></div>
           </div>
         </div>
         <div class="actions">

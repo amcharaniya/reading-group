@@ -4,29 +4,32 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>History · Reading Group</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤭</text></svg>">
+  <title>The Archive · Pursuit of Ilm</title>
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="wide" data-page="history" data-title="Everything we've read">
-  <main class="page">
+<body data-page="history" data-kicker="The Archive" data-title="Everything we’ve read" data-dek="Every article since our first meeting in June 2023. Search, filter, or sort by any column.">
+  <main class="page wrap">
     <div id="content" hidden>
       <div class="toolbar">
         <input type="search" id="q" placeholder="Search title, author, publisher…" aria-label="Search">
-        <select id="selector" aria-label="Selected by"><option value="">Selected by: anyone</option></select>
+        <select id="selector" aria-label="Selected by"><option value="">Selected by anyone</option></select>
         <span class="count" id="count"></span>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th data-key="title"><span class="ico">Aa</span>Title</th>
-              <th data-key="authors"><span class="ico">≡</span>Author(s)</th>
-              <th data-key="published_on"><span class="ico">📅</span>Published</th>
-              <th data-key="publisher"><span class="ico">≡</span>Publisher</th>
-              <th data-key="meeting_date" class="sorted"><span class="ico">📅</span>Date we read</th>
-              <th data-key="selected_by"><span class="ico">👤</span>Selected by</th>
-              <th data-key="url"><span class="ico">🔗</span>Link</th>
+              <th data-key="title">Title</th>
+              <th data-key="authors">Author(s)</th>
+              <th data-key="published_on">Published</th>
+              <th data-key="publisher">Publisher</th>
+              <th data-key="meeting_date" class="sorted">Date we read</th>
+              <th data-key="selected_by">Selected by</th>
+              <th data-key="url">Link</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>

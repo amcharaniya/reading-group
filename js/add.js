@@ -65,12 +65,11 @@ RG.ready.then(async ({ store, me, members }) => {
     const r = Object.fromEntries(DETAIL_FIELDS.map((k) => [k, $(`#${k}`).value]));
     r.url = $("#url").value;
     $("#preview").innerHTML = `
-      <div class="tile">
-        <div class="tile-img">${articleImage(r)}</div>
-        <div class="tile-body">
-          <div class="tile-title">${esc(r.title || "Untitled")}</div>
-          <div class="tile-meta">${[r.authors, r.publisher].filter(Boolean).map(esc).join(" · ")}</div>
-        </div>
+      <div class="story">
+        <div class="story-img">${articleImage(r)}</div>
+        <div class="story-kicker">${esc(r.publisher || hostOf(r.url))}</div>
+        <h3 class="story-title">${esc(r.title || "Untitled")}</h3>
+        ${r.authors ? `<div class="story-byline">By ${esc(r.authors)}</div>` : ""}
       </div>`;
   }
 

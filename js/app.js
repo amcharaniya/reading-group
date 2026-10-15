@@ -2,14 +2,16 @@
 // Pages put their markup in <div id="content" hidden> and run code in RG.ready.then(...).
 (() => {
   const cfg = window.RG_CONFIG || {};
-  const DEMO = !cfg.supabaseUrl || cfg.supabaseUrl.startsWith("YOUR_");
+  // Demo mode (sample data in this browser) until Supabase is configured, and always for local previews.
+  const DEMO = !cfg.supabaseUrl || cfg.supabaseUrl.startsWith("YOUR_") || location.hostname === "localhost";
   const EVERY = cfg.meetingEveryDays || 14;
 
+  const SITE = "Pursuit of Ilm";
   const NAV = [
-    ["index.html", "home", "🤭", "Upcoming"],
-    ["history.html", "history", "📚", "History"],
-    ["add.html", "add", "✏️", "Add articles"],
-    ["about.html", "about", "👋", "About us"],
+    ["index.html", "home", "This Issue"],
+    ["history.html", "history", "The Archive"],
+    ["add.html", "add", "Submit"],
+    ["about.html", "about", "About Us"],
   ];
 
   // ---------- helpers ----------
@@ -40,10 +42,9 @@
     return next;
   }
 
-  // Notion-style colored pill for a person's name.
-  const PILL_COLORS = { Amaan: "purple", Mae: "orange" };
+  // A member's name as a small-caps byline, each in their own ink color.
   const pill = (name) => name
-    ? `<span class="pill pill-${PILL_COLORS[name] || "gray"}">${esc(name)}</span>` : "";
+    ? `<span class="pill pill-${esc(String(name).toLowerCase())}">${esc(name)}</span>` : "";
 
   // Article image, falling back to a lettered placeholder if missing or blocked from hotlinking.
   function articleImage(r) {
@@ -122,20 +123,33 @@
   // ---------- layout ----------
   function renderChrome() {
     const page = document.body.dataset.page;
-    const nav = NAV.map(([href, key, , label]) =>
+    const nav = NAV.map(([href, key, label]) =>
       `<a href="${href}" class="${key === page ? "active" : ""}">${label}</a>`).join("");
-    const current = NAV.find(([, key]) => key === page) || NAV[0];
+    const dateline = new Date().toLocaleDateString(undefined,
+      { weekday: "long", month: "long", day: "numeric", year: "numeric" });
     document.body.insertAdjacentHTML("afterbegin", `
-      <header class="topbar">
-        <a class="crumb" href="index.html"><span class="crumb-icon">🤭</span>Reading Group</a>
+      <header class="wrap">
+        <div class="utility"><span class="date">${dateline}</span><div class="who" id="who"></div></div>
+        <div class="masthead">
+          <a href="index.html"><h1 class="nameplate">${SITE}</h1></a>
+          <p class="tagline">Two readers, two articles, every other week</p>
+        </div>
+        <div class="rule-double"></div>
         <nav class="nav" id="nav" hidden>${nav}</nav>
-        <div class="who" id="who"></div>
-      </header>
-      <div class="cover"><img src="assets/header.jpg" alt="" onerror="this.remove()"></div>`);
+        <figure class="hero">
+          <div class="hero-img"><img src="assets/header.webp" alt="Painting of Socrates and Aspasia in conversation across a table"></div>
+          <figcaption>Nicolas-André Monsiau, <i>Socrates and Aspasia</i>, c. 1800</figcaption>
+        </figure>
+      </header>`);
+    document.body.insertAdjacentHTML("beforeend", `<footer class="footer wrap">${SITE}</footer>`);
     const content = $("#content");
+    const { kicker, title, dek } = document.body.dataset;
     content.insertAdjacentHTML("beforebegin", `
-      <div class="page-icon">${current[2]}</div>
-      <h1 class="page-title">${esc(document.body.dataset.title || current[3])}</h1>
+      ${title ? `<div class="page-head">
+        ${kicker ? `<p class="kicker">${esc(kicker)}</p>` : ""}
+        <h2 class="page-title">${esc(title)}</h2>
+        ${dek ? `<p class="dek">${esc(dek)}</p>` : ""}
+      </div>` : ""}
       <div id="gate"></div>`);
   }
 
@@ -143,19 +157,18 @@
 
   function showSite(me, signOut) {
     $("#gate").innerHTML = DEMO
-      ? `<div class="callout callout-yellow"><span>🧪</span><div><b>Demo mode.</b> Not connected to Supabase yet —
-         these are sample articles saved only in this browser. Fill in <code>js/config.js</code> to go live.</div></div>`
+      ? `<div class="note note-warn"><b>Demo mode.</b> These are sample articles saved only in this browser,
+         not the real reading list.</div>`
       : "";
     $("#nav").hidden = false;
-    $("#who").innerHTML = `${pill(me)}${signOut ? `<button class="link-btn" id="signOut">Sign out</button>` : ""}`;
+    $("#who").innerHTML = `<span>Signed in as ${pill(me)}</span>${signOut ? `<button class="link-btn" id="signOut">Sign out</button>` : ""}`;
     if (signOut) $("#signOut").onclick = signOut;
     $("#content").hidden = false;
   }
 
   function loginForm(sb) {
     showGate(`
-      <div class="callout"><span>🔒</span><div>This page is just for Amaan and Mae. Sign in with your email
-        and we'll send you a link.</div></div>
+      <div class="note">For Amaan and Mae only. Sign in with your email and we'll send you a link.</div>
       <form class="login" id="login">
         <input type="email" id="email" required placeholder="you@example.com" autocomplete="email">
         <button class="btn btn-primary" type="submit">Email me a sign-in link</button>
@@ -191,8 +204,8 @@
     const signOut = () => sb.auth.signOut();
     const { data: me } = await sb.rpc("my_name");
     if (!me) {
-      showGate(`<div class="callout callout-red"><span>🚫</span><div><b>${esc(session.user.email)}</b> isn't on
-        the member list. <button class="link-btn" id="signOut2">Sign out</button></div></div>`);
+      showGate(`<div class="note"><b>${esc(session.user.email)}</b> isn't on the member list.
+        <button class="link-btn" id="signOut2">Sign out</button></div>`);
       $("#signOut2").onclick = signOut;
       return new Promise(() => {});
     }
@@ -205,7 +218,7 @@
     $, esc, today, addDays, daysUntil, fmtDay, fmtLong, hostOf, pill, articleImage, suggestNextMeeting,
     ready: new Promise((resolve) => {
       const go = () => boot().then(resolve).catch((err) => {
-        showGate(`<div class="callout callout-red"><span>⚠️</span><div>Something went wrong: ${esc(err.message)}</div></div>`);
+        showGate(`<div class="note">Something went wrong: ${esc(err.message)}</div>`);
       });
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go); else go();
     }),
