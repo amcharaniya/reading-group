@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Add articles · Reading Group</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤭</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="add" data-title="Add articles">
+  <main class="page">
+    <div id="content" hidden>
+      <p class="muted" id="intro">Paste a link and pick the meeting date — the title, author, publisher and image are filled in for you. Check them before saving.</p>
+      <form class="form" id="form" autocomplete="off">
+        <div class="field">
+          <label for="url">Link to the article</label>
+          <div class="inline">
+            <input type="url" id="url" required placeholder="https://…">
+            <button type="button" class="btn" id="fetch">Fetch details</button>
+          </div>
+          <span class="status" id="fetchStatus"></span>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="meeting_date">Meeting date (when we'll read it)</label>
+            <input type="date" id="meeting_date" required>
+          </div>
+          <div class="field">
+            <label for="selected_by">Selected by</label>
+            <select id="selected_by" required></select>
+          </div>
+        </div>
+        <div id="details" hidden>
+          <div class="form">
+            <div class="field"><label for="title">Title</label><input id="title"></div>
+            <div class="row">
+              <div class="field"><label for="authors">Author(s)</label><input id="authors" placeholder="Separate with commas"></div>
+              <div class="field"><label for="publisher">Publisher</label><input id="publisher"></div>
+            </div>
+            <div class="row">
+              <div class="field"><label for="published_on">Date published</label><input type="date" id="published_on"></div>
+              <div class="field"><label for="image_url">Image URL</label><input type="url" id="image_url"></div>
+            </div>
+            <div class="field"><label for="description">Summary</label><textarea id="description" rows="3"></textarea></div>
+            <div class="field"><label>Tile preview</label><div class="preview" id="preview"></div></div>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary" id="save">Save article</button>
+          <a class="btn" id="cancel" href="history.html" hidden>Cancel</a>
+          <button type="button" class="btn btn-danger" id="delete" hidden>Delete</button>
+          <span class="status" id="saveStatus"></span>
+        </div>
+      </form>
+      <h3 id="sameDayTitle"></h3>
+      <ul class="list" id="sameDay"></ul>
+    </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/add.js"></script>
+</body>
+</html>

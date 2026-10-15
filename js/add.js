@@ -1,0 +1,144 @@
+RG.ready.then(async ({ store, me, members }) => {
+  const { $, esc, fmtDay, fmtLong, pill, articleImage, hostOf, suggestNextMeeting } = RG;
+  const editId = new URLSearchParams(location.search).get("id");
+  const DETAIL_FIELDS = ["title", "authors", "publisher", "published_on", "image_url", "description"];
+  let all = await store.list();
+
+  $("#selected_by").innerHTML = members.map((m) => `<option>${esc(m)}</option>`).join("");
+  $("#selected_by").value = me;
+  $("#meeting_date").value = suggestNextMeeting(all);
+
+  // ---------- pull article details ----------
+  // Microlink reads the page's title / author / publisher / date / preview image (free, no key, ~50 links a day).
+  async function fetchMeta(url) {
+    // Slow sites sometimes time out on the first try and succeed once Microlink has cached them, so retry once.
+    let json;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 20000);
+        const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`, { signal: ctrl.signal });
+        json = await res.json();
+        clearTimeout(timer);
+      } catch (err) {
+        json = { message: err.name === "AbortError" ? "the site took too long to respond" : err.message };
+      }
+      if (json.status === "success") break;
+    }
+    if (json.status !== "success") throw new Error(json.message || "couldn't read that page");
+    const d = json.data;
+    return {
+      title: d.title || "",
+      authors: d.author || "",
+      publisher: d.publisher || hostOf(url),
+      published_on: d.date ? d.date.slice(0, 10) : "",
+      image_url: d.image?.url || "",
+      description: d.description || "",
+    };
+  }
+
+  let lastFetched = "";
+  async function fillFromUrl(force) {
+    const url = $("#url").value.trim();
+    if (!url || !$("#url").checkValidity() || (url === lastFetched && !force)) return;
+    lastFetched = url;
+    const status = $("#fetchStatus");
+    status.className = "status";
+    status.textContent = "Reading the article…";
+    $("#fetch").disabled = true;
+    try {
+      const meta = await fetchMeta(url);
+      for (const k of DETAIL_FIELDS) $(`#${k}`).value = meta[k];
+      status.textContent = "Filled in below — double-check anything that looks off.";
+    } catch (err) {
+      $("#publisher").value ||= hostOf(url);
+      status.className = "status err";
+      status.textContent = `Couldn't pull details automatically (${err.message}). Fill them in below.`;
+    }
+    $("#fetch").disabled = false;
+    $("#details").hidden = false;
+    updatePreview();
+    $("#title").focus();
+  }
+
+  function updatePreview() {
+    const r = Object.fromEntries(DETAIL_FIELDS.map((k) => [k, $(`#${k}`).value]));
+    r.url = $("#url").value;
+    $("#preview").innerHTML = `
+      <div class="tile">
+        <div class="tile-img">${articleImage(r)}</div>
+        <div class="tile-body">
+          <div class="tile-title">${esc(r.title || "Untitled")}</div>
+          <div class="tile-meta">${[r.authors, r.publisher].filter(Boolean).map(esc).join(" · ")}</div>
+        </div>
+      </div>`;
+  }
+
+  $("#fetch").onclick = () => fillFromUrl(true);
+  $("#url").addEventListener("change", () => fillFromUrl(false));
+  $("#url").addEventListener("paste", () => setTimeout(() => fillFromUrl(false), 0));
+  for (const k of ["title", "authors", "publisher", "image_url"]) $(`#${k}`).addEventListener("input", updatePreview);
+
+  // ---------- articles already on the chosen meeting ----------
+  function renderSameDay() {
+    const d = $("#meeting_date").value;
+    const rows = all.filter((r) => r.meeting_date === d && String(r.id) !== editId);
+    $("#sameDayTitle").textContent = d && rows.length ? `Already on ${fmtLong(d)}` : "";
+    $("#sameDay").innerHTML = rows.map((r) => `
+      <li><a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a>
+        ${pill(r.selected_by)} <a class="small muted" href="add.html?id=${r.id}">edit</a></li>`).join("");
+  }
+  $("#meeting_date").addEventListener("change", renderSameDay);
+
+  // ---------- edit mode ----------
+  if (editId) {
+    const r = await store.get(editId);
+    if (!r) { $("#intro").textContent = "That article doesn't exist anymore."; $("#form").hidden = true; return; }
+    document.querySelector(".page-title").textContent = "Edit article";
+    $("#intro").textContent = `Entered by ${r.entered_by || "someone"}${r.updated_by ? `, last edited by ${r.updated_by}` : ""}.`;
+    for (const k of ["url", "meeting_date", "selected_by", ...DETAIL_FIELDS]) $(`#${k}`).value = r[k] ?? "";
+    lastFetched = r.url;
+    $("#details").hidden = false;
+    $("#save").textContent = "Save changes";
+    $("#cancel").hidden = false;
+    $("#delete").hidden = false;
+    $("#delete").onclick = async () => {
+      if (!confirm(`Delete “${r.title}”?`)) return;
+      await store.remove(editId);
+      location.href = "history.html";
+    };
+    updatePreview();
+  }
+  renderSameDay();
+
+  // ---------- save ----------
+  $("#form").onsubmit = async (e) => {
+    e.preventDefault();
+    const status = $("#saveStatus");
+    if ($("#details").hidden) { await fillFromUrl(true); return; }
+    if (!$("#title").value.trim()) { $("#title").focus(); status.className = "status err"; status.textContent = "Add a title first."; return; }
+    const row = Object.fromEntries(
+      ["url", "meeting_date", "selected_by", ...DETAIL_FIELDS].map((k) => [k, $(`#${k}`).value.trim()]));
+    if (editId) row.id = editId;
+    $("#save").disabled = true;
+    status.className = "status";
+    status.textContent = "Saving…";
+    try {
+      await store.save(row);
+      if (editId) { location.href = "history.html"; return; }
+      all = await store.list();
+      status.textContent = `Saved “${row.title}” for ${fmtDay(row.meeting_date)}.`;
+      // Keep the meeting date and picker so the second article is quick to add.
+      for (const k of ["url", ...DETAIL_FIELDS]) $(`#${k}`).value = "";
+      lastFetched = "";
+      $("#details").hidden = true;
+      $("#fetchStatus").textContent = "";
+      renderSameDay();
+      $("#url").focus();
+    } catch (err) {
+      status.className = "status err";
+      status.textContent = `Couldn't save: ${err.message}`;
+    }
+    $("#save").disabled = false;
+  };
+});
