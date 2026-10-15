@@ -25,7 +25,12 @@ RG.ready.then(async ({ store, me, members }) => {
       }
       if (json.status === "success") break;
     }
-    if (json.status !== "success") throw new Error(json.message || "couldn't read that page");
+    if (json.status !== "success") {
+      const msg = /rate limit/i.test(json.message || "")
+        ? "the free lookup service's daily limit is used up; it resets tomorrow"
+        : json.message || "couldn't read that page";
+      throw new Error(msg);
+    }
     const d = json.data;
     return {
       title: d.title || "",
@@ -37,10 +42,30 @@ RG.ready.then(async ({ store, me, members }) => {
     };
   }
 
+  // Fields typed by hand since the last fetch. Re-fetching the same link never overwrites them;
+  // fetching a different link starts fresh.
+  const edited = new Set();
+  for (const k of DETAIL_FIELDS) $(`#${k}`).addEventListener("input", () => {
+    edited.add(k);
+    $(`#${k}`).classList.toggle("missing", !$(`#${k}`).value.trim());
+  });
+
+  function markMissing() {
+    for (const k of DETAIL_FIELDS) $(`#${k}`).classList.toggle("missing", !$(`#${k}`).value.trim());
+  }
+
+  function showDetails() {
+    $("#details").hidden = false;
+    $("#manual").hidden = true;
+    markMissing();
+    updatePreview();
+  }
+
   let lastFetched = "";
   async function fillFromUrl(force) {
     const url = $("#url").value.trim();
     if (!url || !$("#url").checkValidity() || (url === lastFetched && !force)) return;
+    if (url !== lastFetched) edited.clear();
     lastFetched = url;
     const status = $("#fetchStatus");
     status.className = "status";
@@ -48,18 +73,32 @@ RG.ready.then(async ({ store, me, members }) => {
     $("#fetch").disabled = true;
     try {
       const meta = await fetchMeta(url);
-      for (const k of DETAIL_FIELDS) $(`#${k}`).value = meta[k];
-      status.textContent = "Filled in below — double-check anything that looks off.";
+      const kept = [];
+      for (const k of DETAIL_FIELDS) {
+        if (edited.has(k)) { kept.push(k); continue; }
+        $(`#${k}`).value = meta[k];
+      }
+      const missing = DETAIL_FIELDS.filter((k) => !$(`#${k}`).value.trim()).length;
+      status.textContent = "Filled in below. Check everything before saving"
+        + (missing ? ` (${missing} field${missing === 1 ? "" : "s"} not found)` : "")
+        + (kept.length ? "; your own edits were kept." : ".");
     } catch (err) {
-      $("#publisher").value ||= hostOf(url);
+      if (!edited.has("publisher")) $("#publisher").value ||= hostOf(url);
       status.className = "status err";
       status.textContent = `Couldn't pull details automatically (${err.message}). Fill them in below.`;
     }
     $("#fetch").disabled = false;
-    $("#details").hidden = false;
-    updatePreview();
+    showDetails();
     $("#title").focus();
   }
+
+  $("#manual").onclick = () => {
+    const url = $("#url").value.trim();
+    if (url && !$("#publisher").value) $("#publisher").value = hostOf(url);
+    $("#fetchStatus").textContent = "";
+    showDetails();
+    $("#title").focus();
+  };
 
   function updatePreview() {
     const r = Object.fromEntries(DETAIL_FIELDS.map((k) => [k, $(`#${k}`).value]));
@@ -97,7 +136,7 @@ RG.ready.then(async ({ store, me, members }) => {
     $("#intro").textContent = `Entered by ${r.entered_by || "someone"}${r.updated_by ? `, last edited by ${r.updated_by}` : ""}.`;
     for (const k of ["url", "meeting_date", "selected_by", ...DETAIL_FIELDS]) $(`#${k}`).value = r[k] ?? "";
     lastFetched = r.url;
-    $("#details").hidden = false;
+    showDetails();
     $("#save").textContent = "Save changes";
     $("#cancel").hidden = false;
     $("#delete").hidden = false;
@@ -114,7 +153,12 @@ RG.ready.then(async ({ store, me, members }) => {
   $("#form").onsubmit = async (e) => {
     e.preventDefault();
     const status = $("#saveStatus");
-    if ($("#details").hidden) { await fillFromUrl(true); return; }
+    // Always show the details for review before the first save.
+    if ($("#details").hidden) {
+      await fillFromUrl(true);
+      if (!$("#details").hidden) { status.className = "status"; status.textContent = "Review the details below, then save."; }
+      return;
+    }
     if (!$("#title").value.trim()) { $("#title").focus(); status.className = "status err"; status.textContent = "Add a title first."; return; }
     const row = Object.fromEntries(
       ["url", "meeting_date", "selected_by", ...DETAIL_FIELDS].map((k) => [k, $(`#${k}`).value.trim()]));
@@ -130,7 +174,9 @@ RG.ready.then(async ({ store, me, members }) => {
       // Keep the meeting date and picker so the second article is quick to add.
       for (const k of ["url", ...DETAIL_FIELDS]) $(`#${k}`).value = "";
       lastFetched = "";
+      edited.clear();
       $("#details").hidden = true;
+      $("#manual").hidden = false;
       $("#fetchStatus").textContent = "";
       renderSameDay();
       $("#url").focus();

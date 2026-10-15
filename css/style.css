@@ -199,3 +199,5 @@ td .edit:hover { color: var(--accent); }
   .utility .date { display: none; }
 }
 .bio { font: italic 400 19px/1.55 var(--serif); color: var(--ink-2); margin: 0; }
+.field input.missing, .field textarea.missing { border-color: #c9a227; background: #fffbea; }
+#manual { justify-self: start; margin-top: 2px; }
