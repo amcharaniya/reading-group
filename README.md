@@ -11,9 +11,17 @@ Amaan and Mae's reading group: two articles every two weeks. Static site on GitH
 
 ## Privacy
 
-The pages themselves are public files, but they show nothing except a sign-in box. Articles live in Supabase behind
-row-level security: only emails in the `members` table can read or write them, and each article records who entered it
-(`entered_by`) and who last edited it (`updated_by`). Sign-in uses an emailed magic link.
+The pages themselves are public files, but they show nothing except a password box. Articles live in Supabase
+behind row-level security: only the shared site account (`sharedLoginEmail` in `js/config.js`) and member emails
+can read or write them. After the password, each device picks who's reading (Amaan or Mae), and that name is
+recorded on articles it adds (`entered_by`) or edits (`updated_by`).
+
+To change the password, run this in the Supabase SQL Editor:
+
+```sql
+update auth.users set encrypted_password = extensions.crypt('NEW PASSWORD', extensions.gen_salt('bf'))
+where email = 'reading-group@pursuit-of-ilm.com';
+```
 
 ## Setup
 

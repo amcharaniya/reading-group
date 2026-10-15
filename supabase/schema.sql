@@ -88,3 +88,4 @@ grant select, insert, update, delete on public.readings to authenticated;
 grant execute on function public.my_name() to authenticated;
 
 -- 4. Add the two of you in a separate query (kept out of this public repo) — see supabase/setup.local.sql.
+-- 5. Then run supabase/shared-password.sql to allow the shared site password.

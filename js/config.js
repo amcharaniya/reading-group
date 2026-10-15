@@ -5,5 +5,7 @@
 window.RG_CONFIG = {
   supabaseUrl: "https://qntpbraaxwexfqddblbx.supabase.co",
   supabaseAnonKey: "sb_publishable_DDWlrT6eg9tYDzsFBtujtw_mdX0WXb_",
+  // The shared account the site password belongs to (Supabase → Authentication → Users).
+  sharedLoginEmail: "reading-group@pursuit-of-ilm.com",
   meetingEveryDays: 14,
 };

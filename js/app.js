@@ -2,8 +2,10 @@
 // Pages put their markup in <div id="content" hidden> and run code in RG.ready.then(...).
 (() => {
   const cfg = window.RG_CONFIG || {};
-  // Demo mode (sample data in this browser) until Supabase is configured, and always for local previews.
-  const DEMO = !cfg.supabaseUrl || cfg.supabaseUrl.startsWith("YOUR_") || location.hostname === "localhost";
+  // Demo mode (sample data in this browser) until Supabase is configured, and for local previews
+  // unless the URL has ?live.
+  const DEMO = !cfg.supabaseUrl || cfg.supabaseUrl.startsWith("YOUR_")
+    || (location.hostname === "localhost" && !new URLSearchParams(location.search).has("live"));
   const EVERY = cfg.meetingEveryDays || 14;
 
   const SITE = "Pursuit of Ilm";
@@ -61,15 +63,16 @@
     "description", "meeting_date", "selected_by"];
   const pick = (r) => Object.fromEntries(FIELDS.map((k) => [k, r[k] === "" ? null : r[k] ?? null]));
 
-  function supabaseStore(sb) {
+  // `me` is who's reading on this device; it's stamped on articles added or edited here.
+  function supabaseStore(sb, me) {
     const must = ({ data, error }) => { if (error) throw error; return data; };
     return {
       list: async () => must(await sb.from("readings").select("*")
         .order("meeting_date", { ascending: false }).order("id")),
       get: async (id) => must(await sb.from("readings").select("*").eq("id", id).single()),
       save: async (r) => r.id
-        ? must(await sb.from("readings").update(pick(r)).eq("id", r.id).select().single())
-        : must(await sb.from("readings").insert(pick(r)).select().single()),
+        ? must(await sb.from("readings").update({ ...pick(r), updated_by: me }).eq("id", r.id).select().single())
+        : must(await sb.from("readings").insert({ ...pick(r), entered_by: me }).select().single()),
       remove: async (id) => must(await sb.from("readings").delete().eq("id", id)),
     };
   }
@@ -155,37 +158,70 @@
 
   function showGate(html) { $("#gate").innerHTML = html; }
 
-  function showSite(me, signOut) {
+  function showSite(me, signOut, canSwitch) {
     $("#gate").innerHTML = DEMO
       ? `<div class="note note-warn"><b>Demo mode.</b> These are sample articles saved only in this browser,
          not the real reading list.</div>`
       : "";
     $("#nav").hidden = false;
-    $("#who").innerHTML = `<span>Signed in as ${pill(me)}</span>${signOut ? `<button class="link-btn" id="signOut">Sign out</button>` : ""}`;
+    $("#who").innerHTML = `<span>Reading as ${pill(me)}</span>`
+      + (canSwitch ? `<button class="link-btn" id="switchReader">Switch</button>` : "")
+      + (signOut ? `<button class="link-btn" id="signOut">Sign out</button>` : "");
+    if (canSwitch) $("#switchReader").onclick = () => { forgetReader(); location.reload(); };
     if (signOut) $("#signOut").onclick = signOut;
     $("#content").hidden = false;
   }
 
+  // Who's reading on this device (the shared login doesn't know). Remembered per browser.
+  const READER_KEY = "rg-reader";
+  const savedReader = () => { try { return localStorage.getItem(READER_KEY); } catch { return null; } };
+  const rememberReader = (name) => { try { localStorage.setItem(READER_KEY, name); } catch {} };
+  const forgetReader = () => { try { localStorage.removeItem(READER_KEY); } catch {} };
+
+  function askReader(members) {
+    return new Promise((resolve) => {
+      showGate(`
+        <div class="page-head"><p class="kicker">Welcome</p><h2 class="page-title">Who’s reading?</h2>
+          <p class="dek">Articles you add or edit on this device will be credited to you.</p></div>
+        <div class="actions" id="readers">${members.map((m) =>
+          `<button class="btn btn-primary" data-name="${esc(m)}">${esc(m)}</button>`).join("")}</div>`);
+      $("#readers").onclick = (e) => {
+        const name = e.target.closest("button")?.dataset.name;
+        if (!name) return;
+        rememberReader(name);
+        resolve(name);
+      };
+    });
+  }
+
   function loginForm(sb) {
     showGate(`
-      <div class="note">For Amaan and Mae only. Sign in with your email and we'll send you a link.</div>
+      <div class="note">For Amaan and Mae only. Enter the password to come in.</div>
       <form class="login" id="login">
-        <input type="email" id="email" required placeholder="you@example.com" autocomplete="email">
-        <button class="btn btn-primary" type="submit">Email me a sign-in link</button>
+        <input type="hidden" autocomplete="username" value="${esc(cfg.sharedLoginEmail)}">
+        <input type="password" id="password" required placeholder="Password" autocomplete="current-password" autofocus>
+        <button class="btn btn-primary" type="submit">Enter</button>
       </form>
-      <p class="muted" id="loginMsg"></p>`);
+      <p class="status" id="loginMsg"></p>`);
     $("#login").onsubmit = async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector("button");
       btn.disabled = true;
-      const { error } = await sb.auth.signInWithOtp({
-        email: $("#email").value.trim(),
-        options: { emailRedirectTo: location.href.split(/[?#]/)[0] },
+      $("#loginMsg").className = "status";
+      $("#loginMsg").textContent = "Checking…";
+      const { error } = await sb.auth.signInWithPassword({
+        email: cfg.sharedLoginEmail,
+        password: $("#password").value,
       });
       btn.disabled = false;
-      $("#loginMsg").textContent = error
-        ? `Couldn't send the link: ${error.message}`
-        : "Check your email for the sign-in link. You can close this tab.";
+      if (error) {
+        $("#loginMsg").className = "status err";
+        $("#loginMsg").textContent = /invalid/i.test(error.message)
+          ? "That password isn't right." : `Couldn't sign in: ${error.message}`;
+        $("#password").select();
+        return;
+      }
+      location.reload();
     };
   }
 
@@ -201,17 +237,27 @@
     sb.auth.onAuthStateChange((event) => { if (event === "SIGNED_OUT") location.reload(); });
     if (!session) { loginForm(sb); return new Promise(() => {}); }
 
-    const signOut = () => sb.auth.signOut();
-    const { data: me } = await sb.rpc("my_name");
-    if (!me) {
-      showGate(`<div class="note"><b>${esc(session.user.email)}</b> isn't on the member list.
+    const signOut = () => { forgetReader(); return sb.auth.signOut(); };
+    // Fall back to the member check if supabase/shared-password.sql hasn't been run yet.
+    const reader = await sb.rpc("is_reader");
+    const allowed = reader.error ? !!(await sb.rpc("my_name")).data : reader.data;
+    if (!allowed) {
+      showGate(`<div class="note"><b>${esc(session.user.email)}</b> isn't allowed in.
         <button class="link-btn" id="signOut2">Sign out</button></div>`);
       $("#signOut2").onclick = signOut;
       return new Promise(() => {});
     }
     const { data: memberRows } = await sb.from("members").select("name").order("name");
-    showSite(me, signOut);
-    return { store: supabaseStore(sb), me, members: (memberRows || []).map((m) => m.name), demo: false };
+    const members = (memberRows || []).map((m) => m.name);
+    // A personal sign-in already knows who you are; the shared password asks once per device.
+    const { data: myName } = await sb.rpc("my_name");
+    let me = myName;
+    if (!me) {
+      me = savedReader();
+      if (!members.includes(me)) me = await askReader(members);
+    }
+    showSite(me, signOut, !myName);
+    return { store: supabaseStore(sb, me), me, members, demo: false };
   }
 
   window.RG = {
